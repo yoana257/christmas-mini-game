@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Christmas Mini Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.55.2/phaser.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: black;
+        }
+        canvas {
+             display: block;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        const config = {
+            type: Phaser.AUTO,
+            width: 1200,
+            height: 700,
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 0 },
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        const game = new Phaser.Game(config);
+        let player, gifts, coals, cursors, score = 0, scoreText, gameOver = false, timerEvent;
+        let instructions = "Catch as many presents as you can and avoid coal!";
+        function preload() {
+            this.load.image('background', 'assets/background.png');
+            this.load.image('gift', 'assets/gift.png');
+            this.load.image('coal', 'assets/coal.png');
+            this.load.image('santa', 'assets/santa.png');
+            this.load.audio('music', 'assets/music.mp3');
+        }
+
+        function create() {
+            this.add.image(600, 350, 'background').setScale(0.35);
+            this.music = this.sound.add('music', { loop: true, volume: 0.3 });
+            this.music.play();
+            player = this.physics.add.sprite(400, 580, 'santa').setScale(0.3).setCollideWorldBounds(true);
+            gifts = this.physics.add.group();
+            coals = this.physics.add.group();
+            cursors = this.input.keyboard.createCursorKeys();
+            scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#fff' });
+            this.add.text(720, 30, instructions, { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
+            this.physics.add.overlap(player, gifts, collectGift, null, this);
+            this.physics.add.overlap(player, coals, hitCoal, null, this);
+
+            timerEvent = this.time.addEvent({ delay: 60000, callback: endGame, callbackScope: this });
+            this.time.addEvent({ delay: 1000, callback: spawnItems, callbackScope: this, loop: true });
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            if (cursors.left.isDown) {
+                player.setVelocityX(-400);
+            } else if (cursors.right.isDown) {
+                player.setVelocityX(400);
+            } else {
+                player.setVelocityX(0);
+            }
+        }
+
+        function collectGift(player, gift) {
+            gift.destroy();
+            score += 1;
+            scoreText.setText('Score: ' + score);
+        }
+
+        function hitCoal(player, coal) {
+            coal.destroy();
+            score = Math.max(0, score - 1);
+            scoreText.setText('Score: ' + score);
+        }
+
+        function spawnItems() {
+            const itemType = Math.random() < 0.5 ? 'gift' : 'coal';
+            const x = Phaser.Math.Between(0, 800);
+            const item = itemType === 'gift' ? gifts.create(x, 0, 'gift') : coals.create(x, 0, 'coal');
+            item.setVelocityY(200);
+            if (itemType === 'gift') {
+                item.setScale(0.1);
+            } else {
+                item.setScale(0.05);
+            }  
+            item.checkWorldBounds = true;
+            item.outOfBoundsKill = true;
+        }
+
+        function endGame() {
+            gameOver = true;
+            const resultText = score >= 25 ? 'You managed to collect enough presents! \nYou win!' : 'You did not collect enough presents. \nMany people will not receive a gift. \nGame over!';
+            this.add.text(600, 300, resultText, { fontSize: '32px', fill: '#000', backgroundColor: '#fff', align: 'center' }).setOrigin(0.5);
+            const playAgainText = this.add.text(600, 400, 'Play Again', { fontSize: '32px', fill: '#000', backgroundColor: '#fff', align: 'center' }).setOrigin(0.5);
+            playAgainText.setInteractive();
+            playAgainText.on('pointerdown', () => location.reload());
+        }
+    </script>
+</body>
+</html>
